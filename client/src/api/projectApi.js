@@ -1,7 +1,7 @@
 import API from "./axios";
 
 export const createProject = async (projectData) => {
-  const res = await API.post("/projects", projectData);
+  const res = await API.post("/api/projects", projectData);
   return res.data;
 };
 
