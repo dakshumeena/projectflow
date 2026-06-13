@@ -14,7 +14,7 @@ const InviteMemberDialog = ({ isDialogOpen, setIsDialogOpen }) => {
     if (!currentWorkspace?._id) return;
     setIsSubmitting(true);
     try {
-      await API.post(`/workspaces/${currentWorkspace._id}/members`, {
+      await API.post(`/api/workspaces/${currentWorkspace._id}/members`, {
         email: formData.email,
       });
       toast.success("Member invited successfully!");
