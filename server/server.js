@@ -22,7 +22,7 @@ const workspaceRoutes = require("./routes/workspaceRoutes");
 const projectRoutes = require("./routes/projectRoutes");
 const taskRoutes = require("./routes/taskRoutes");
 const activityRoutes = require("./routes/activityRoutes");
-const testEmailRoute = require("./routes/TestemailrouteestEmailRoute");
+const testEmailRoute = require("./routes/Testemailroute");
 
 const app = express();
 
