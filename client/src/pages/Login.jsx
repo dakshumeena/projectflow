@@ -17,7 +17,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await API.post("/auth/login", { email, password });
+     const res = await API.post("/api/auth/login", { email, password });
       dispatch(loginSuccess({ token: res.data.token, user: res.data.user }));
       toast.success("Login Successful");
       const redirectTo = location.state?.redirectTo || "/";
