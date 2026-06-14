@@ -21,8 +21,10 @@ const InviteMemberDialog = ({ isDialogOpen, setIsDialogOpen }) => {
       setIsDialogOpen(false);
       setFormData({ email: "", role: "MEMBER" });
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to invite member");
-    } finally {
+  toast.error(
+    err?.response?.data?.message || "Failed to invite member"
+  );
+} finally {
       setIsSubmitting(false);
     }
   };
