@@ -64,12 +64,4 @@ You can start editing the page by modifying `src/App.jsx`. The page auto-updates
 
 ---
 
-## 🤝 Contributing <a name="-contributing"></a>
 
-We welcome contributions! Please see our [CONTRIBUTING.md](./CONTRIBUTING.md) for more details on how to get started.
-
----
-
-## 📜 License <a name="-license"></a>
-
-This project is licensed under the MIT License. See the [LICENSE.md](./LICENSE.md) file for details.
