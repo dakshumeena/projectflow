@@ -6,15 +6,17 @@ import ProjectSettings from "../components/ProjectSettings";
 import CreateTaskDialog from "../components/CreateTaskDialog";
 import ProjectCalendar from "../components/ProjectCalendar";
 import ProjectTasks from "../components/ProjectTasks";
-import { getProjectById } from "../api/projectApi";
+import { getProjectById, deleteProject } from "../api/projectApi";
 import { getTasksByProject } from "../api/taskApi";
+import { removeProjectFromWorkspace } from "../features/workspaceSlice";
+import { useDispatch } from "react-redux";
 
 export default function ProjectDetail() {
 
     const [searchParams, setSearchParams] = useSearchParams();
     const tab = searchParams.get('tab');
     const id = searchParams.get('id');
-
+    const dispatch = useDispatch();
     const navigate = useNavigate();
 
     const [project, setProject] = useState(null);
@@ -61,6 +63,26 @@ export default function ProjectDetail() {
         setTasks((prev) => prev.filter((t) => !deletedIds.includes(t._id)));
     };
 
+ const handleDeleteProject = async (projectId) => {
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this project?"
+  );
+
+  if (!confirmDelete) return;
+
+  try {
+    await deleteProject(projectId);
+     dispatch(removeProjectFromWorkspace(projectId));
+    navigate("/projects");
+  } catch (error) {
+  if (error.response?.status === 404) {
+    navigate("/projects");
+    return;
+  }
+
+  console.error(error);
+}
+};
     const statusColors = {
         PLANNING: "bg-zinc-200 text-zinc-900 dark:bg-zinc-600 dark:text-zinc-200",
         ACTIVE: "bg-emerald-200 text-emerald-900 dark:bg-emerald-500 dark:text-emerald-900",
@@ -99,6 +121,9 @@ export default function ProjectDetail() {
                         </span>
                     </div>
                 </div>
+                <button onClick={() => handleDeleteProject(project._id)} className="flex items-center gap-2 px-5 py-2 text-sm rounded bg-gradient-to-br from-red-500 to-red-600 text-white">
+                    Delete Project
+                </button>
                 <button onClick={() => setShowCreateTask(true)} className="flex items-center gap-2 px-5 py-2 text-sm rounded bg-gradient-to-br from-blue-500 to-blue-600 text-white">
                     <PlusIcon className="size-4" />
                     New Task

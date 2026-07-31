@@ -6,6 +6,7 @@ import { MoonIcon, SunIcon } from 'lucide-react'
 import { assets } from '../assets/assets'
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { NotificationBell } from "./NotificationsPanel";
 
 const Navbar = ({ setIsSidebarOpen }) => {
     const dispatch = useDispatch();
@@ -61,6 +62,7 @@ const Navbar = ({ setIsSidebarOpen }) => {
 
                 {/* Right section */}
                 <div className="flex items-center gap-3">
+                    <NotificationBell />
                     {/* Theme Toggle */}
                     <button
                         onClick={() => dispatch(toggleTheme())}

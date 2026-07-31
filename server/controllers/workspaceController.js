@@ -1,12 +1,13 @@
 const Workspace = require("../models/Workspace");
 const Project = require("../models/Project");
+const Task=require("../models/Task")
 const Invitation = require("../models/Invitation");
 const createActivity = require("../utils/createActivity");
-const sendEmail = require("../utils/sendEmail");
 const User = require("../models/User");
 const crypto = require("crypto");
-
+const sendInviteEmail = require("../utils/sendEmail");
 const createWorkspace = async (req, res) => {
+  
   try {
     const { name, description } = req.body;
 
@@ -48,52 +49,42 @@ const addMemberToWorkspace = async (req, res) => {
       return res.status(404).json({ success: false, message: "Workspace not found" });
     }
 
-    // Check if already a member
     const existingUser = await User.findOne({ email });
-    if (existingUser && workspace.members.map(String).includes(String(existingUser._id))) {
-      return res.status(400).json({ success: false, message: "User is already a workspace member" });
+    if (existingUser && workspace.members.includes(existingUser._id)) {
+      return res.status(400).json({ success: false, message: "User already a member" });
     }
 
-    // Generate invite token
+    // Replace any previous pending invite for this email+workspace
+    await Invitation.deleteMany({ email, workspace: workspace._id, type: "WORKSPACE", status: "PENDING" });
+
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    // Remove any existing pending invite for this email+workspace
-    await Invitation.deleteMany({ email, workspace: workspace._id, project: null, status: "PENDING" });
-
-    // We reuse the Invitation model; store project as null for workspace-level invites
-    // To keep it simple, create a workspace-only invite record
     await Invitation.create({
+      type: "WORKSPACE",
       email,
-      project: workspace._id, // repurposed field — we'll handle on accept
       workspace: workspace._id,
       invitedBy: req.user.id,
       token,
       expiresAt,
     });
 
-    const inviteLink = `${process.env.CLIENT_URL}/invite/workspace/${token}`;
+    const inviteLink = `${process.env.CLIENT_URL}/invite/${token}`;
 
-    await sendEmail({
-      to: email,
-      subject: `You're invited to join the workspace "${workspace.name}"`,
-      html: `
-        <h2>Workspace Invitation</h2>
-        <p>You've been invited to join the workspace <b>${workspace.name}</b> on ProjectFlow.</p>
-        <p>Click below to accept the invitation:</p>
-        <a href="${inviteLink}" style="display:inline-block;padding:10px 20px;background:#3b82f6;color:#fff;border-radius:6px;text-decoration:none;">Join Workspace</a>
-        <p style="color:#888;font-size:12px;margin-top:20px;">This link expires in 7 days. If you don't have an account, you'll be asked to register first.</p>
-      `,
-    });
+    await sendInviteEmail({
+  email,
+  projectName: workspace.name,
+  inviteLink,
+  invitedByName: workspace.owner?.name,
+});
 
-    res.status(200).json({
-      success: true,
-      message: "Invitation email sent successfully. Member will be added once they accept.",
-    });
+
+    res.status(200).json({ success: true, message: "Invitation email sent successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // Accept workspace invitation
 const acceptWorkspaceInvitation = async (req, res) => {
@@ -190,9 +181,21 @@ const deleteWorkspace = async (req, res) => {
     if (workspace.owner.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: "Only the workspace owner can delete it" });
     }
-
-    await Workspace.findByIdAndDelete(req.params.id);
-    res.status(200).json({ success: true, message: "Workspace deleted successfully" });
+      const projects = await Project.find({
+      workspace: req.params.id,
+    });
+     const projectIds = projects.map((project) => project._id);
+      await Task.deleteMany({
+      project: { $in: projectIds },
+    });
+     await Project.deleteMany({
+      workspace: req.params.id,
+    });
+     await Workspace.findByIdAndDelete(req.params.id);
+        res.status(200).json({
+      success: true,
+      message: "Workspace and all related projects/tasks deleted successfully",
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -241,7 +244,60 @@ const getWorkspaces = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+const getMyInvitations = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
 
+    const invitations = await Invitation.find({
+      email: user.email,
+      status: "PENDING",
+      expiresAt: { $gt: new Date() },
+    })
+      .populate("workspace", "name")
+      .populate("invitedBy", "name");
+const validInvitations = invitations.filter(
+  (invite) => invite.workspace
+);
+
+
+    res.status(200).json({
+      success: true,
+      invitations,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+const declineInvitation = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const invitation = await Invitation.findOne({ token });
+
+    if (!invitation) {
+      return res.status(404).json({
+        success: false,
+        message: "Invitation not found",
+      });
+    }
+
+    invitation.status = "EXPIRED";
+    await invitation.save();
+
+    res.json({
+      success: true,
+      message: "Invitation declined",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 module.exports = {
   createWorkspace,
   getWorkspaces,
@@ -249,4 +305,6 @@ module.exports = {
   acceptWorkspaceInvitation,
   getWorkspaceInvitationDetails,
   deleteWorkspace,
+  getMyInvitations,
+  declineInvitation
 };

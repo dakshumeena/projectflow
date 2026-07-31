@@ -11,6 +11,7 @@ import AcceptInvite from "./pages/AcceptInvite";
 import Settings from "./pages/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+
 const App = () => {
     return (
         <Routes>

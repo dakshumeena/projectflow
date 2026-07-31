@@ -91,6 +91,20 @@ const workspaceSlice = createSlice({
         );
       }
     },
+    removeProjectFromWorkspace: (state, action) => {
+  if (state.currentWorkspace) {
+    state.currentWorkspace.projects =
+      state.currentWorkspace.projects.filter(
+        (p) => p._id !== action.payload
+      );
+
+    state.workspaces = state.workspaces.map((w) =>
+      w._id === state.currentWorkspace._id
+        ? state.currentWorkspace
+        : w
+    );
+  }
+},
   },
 });
 
@@ -103,6 +117,7 @@ export const {
   deleteWorkspace,
   addProjectToWorkspace,
   updateProjectInWorkspace,
+  removeProjectFromWorkspace,
 } = workspaceSlice.actions;
 
 export default workspaceSlice.reducer;

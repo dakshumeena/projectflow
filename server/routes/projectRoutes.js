@@ -8,8 +8,6 @@ const {
   updateProject,
   deleteProject,
   addMemberToProject,
-  acceptInvitation,
-  getInvitationDetails,
 } = require("../controllers/projectController");
 
 router.post("/", protect, createProject);
@@ -18,9 +16,5 @@ router.get("/:id", protect, getProjectById);
 router.put("/:id", protect, updateProject);
 router.delete("/:id", protect, deleteProject);
 router.post("/:id/members", protect, addMemberToProject);
-
-// Invitation routes
-router.get("/invite/:token", getInvitationDetails);       // public — show invite info
-router.post("/invite/:token/accept", protect, acceptInvitation); // requires login
 
 module.exports = router;

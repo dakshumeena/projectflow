@@ -1,39 +1,34 @@
-const nodemailer = require("nodemailer");
+const ProjectInviteEmail = require("../email/ProjectInviteEmail");
+const { Resend } = require("resend");
 
-let transporter = null;
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const getTransporter = () => {
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      family: 4, // force IPv4 — avoids ENETUNREACH on hosts without IPv6 (Render)
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-    });
-  }
-  return transporter;
-};
-
-const sendEmail = async ({ to, subject, html }) => {
+const sendInviteEmail = async ({
+  email,
+  projectName,
+  inviteLink,
+  invitedByName,
+}) => {
   try {
-    await getTransporter().sendMail({
-      from: `"ProjectFlow" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      html,
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: `Invitation to join ${projectName}`,
+      react: ProjectInviteEmail({
+        projectName,
+        inviteLink,
+        invitedByName,
+      }),
     });
 
-    console.log("Email sent to:", to);
-    return { success: true };
-  } catch (error) {
-    console.error("Email sending error:", error.message);
-    return { success: false, error: error.message };
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  } catch (err) {
+    console.error(err);
+    throw err;
   }
 };
-
-module.exports = sendEmail;
+module.exports = sendInviteEmail;

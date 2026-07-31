@@ -17,9 +17,17 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-     const res = await API.post("/api/auth/login", { email, password });
+      const res = await API.post("/auth/login", { email, password });
       dispatch(loginSuccess({ token: res.data.token, user: res.data.user }));
       toast.success("Login Successful");
+
+      const pendingInviteToken = localStorage.getItem("pendingInviteToken");
+      if (pendingInviteToken) {
+        localStorage.removeItem("pendingInviteToken");
+        navigate(`/invite/${pendingInviteToken}`);
+        return;
+      }
+
       const redirectTo = location.state?.redirectTo || "/";
       navigate(redirectTo);
     } catch (error) {
@@ -31,7 +39,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left */}
       <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-500 text-white flex-col justify-center px-16">
         <h1 className="text-5xl font-bold mb-6">ProjectFlow</h1>
         <p className="text-xl text-gray-100 leading-relaxed">
@@ -47,7 +54,6 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Right */}
       <div className="flex-1 flex items-center justify-center bg-slate-100 p-6">
         <div className="w-full max-w-md bg-white shadow-2xl rounded-2xl p-8">
           <div className="text-center mb-8">

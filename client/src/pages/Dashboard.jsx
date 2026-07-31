@@ -9,6 +9,7 @@ import { deleteWorkspace } from '../api/workspaceApi';
 import { getWorkspaceActivities } from '../api/activityApi';
 import { useDispatch, useSelector } from 'react-redux';
 import { deleteWorkspace as deleteWorkspaceAction } from '../features/workspaceSlice';
+import toast from "react-hot-toast";
 
 const Dashboard = () => {
   const dispatch = useDispatch();
@@ -36,28 +37,33 @@ const Dashboard = () => {
   }, [currentWorkspace?._id]);
 
   const handleDeleteWorkspace = async (workspaceId) => {
+     console.log("Workspace ID:", workspaceId);
     const confirmDelete = window.confirm('Are you sure you want to delete this workspace?');
     if (!confirmDelete) return;
     try {
       await deleteWorkspace(workspaceId);
       dispatch(deleteWorkspaceAction(workspaceId));
     } catch (error) {
-      console.error(error);
-    }
+  toast.error(
+    error.response?.data?.message || "Failed to delete workspace"
+  );
+}
   };
 
-  if (!currentWorkspace) return (
+  if (!currentWorkspace) {
+  return (
     <div className="flex items-center justify-center h-96">
-      <div className="flex flex-col items-center gap-3 text-zinc-500 dark:text-zinc-400">
-        <svg className="size-8 text-blue-500 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-        </svg>
-        <p className="text-sm">Loading workspace...</p>
+      <div className="text-center">
+        <h2 className="text-xl font-semibold">
+          No Workspace Found
+        </h2>
+        <p className="text-zinc-500 mt-2">
+          Create a workspace to get started.
+        </p>
       </div>
     </div>
   );
-
+}
   return (
     <div className="max-w-6xl mx-auto">
       {/* Header */}
@@ -70,6 +76,12 @@ const Dashboard = () => {
             Here's what's happening with your projects today
           </p>
         </div>
+        <button
+          onClick={() => handleDeleteWorkspace(currentWorkspace._id)}
+          className="  px-5 py-2 text-sm rounded bg-gradient-to-br from-red-500 to-red-600 text-white hover:opacity-90 transition"
+        >
+         Delete WorkSpace
+        </button>
         <button
           onClick={() => setIsDialogOpen(true)}
           className="flex items-center gap-2 px-5 py-2 text-sm rounded bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:opacity-90 transition"

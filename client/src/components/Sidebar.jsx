@@ -5,17 +5,17 @@ import ProjectSidebar from './ProjectsSidebar'
 import WorkspaceDropdown from './WorkspaceDropdown'
 import ActivitySidebar from './ActivitySidebar'
 import ActivityModal from './ActivityModal'
-import { FolderOpenIcon, LayoutDashboardIcon, SettingsIcon, UsersIcon } from 'lucide-react'
+import { FolderOpenIcon, LayoutDashboardIcon, SettingsIcon, UsersIcon,Bell } from 'lucide-react'
 
 const Sidebar = ({ isSidebarOpen, setIsSidebarOpen }) => {
     const [activityModalOpen, setActivityModalOpen] = useState(false);
 
     const menuItems = [
-        { name: 'Dashboard', href: '/',        icon: LayoutDashboardIcon },
-        { name: 'Projects',  href: '/projects', icon: FolderOpenIcon },
-        { name: 'Team',      href: '/team',     icon: UsersIcon },
-        { name: 'Settings',  href: '/settings', icon: SettingsIcon },
-    ]
+    { name: 'Dashboard', href: '/', icon: LayoutDashboardIcon },
+    { name: 'Projects', href: '/projects', icon: FolderOpenIcon },
+    { name: 'Team', href: '/team', icon: UsersIcon },
+    { name: 'Settings', href: '/settings', icon: SettingsIcon },
+]
 
     const sidebarRef = useRef(null);
 
