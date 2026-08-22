@@ -9,26 +9,27 @@ const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-const navigate = useNavigate();
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const navigate = useNavigate();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  try {
-   const res = await API.post("/auth/register", {
-  name,
-  email,
-  password,
-});
+    try {
+      await API.post("/auth/register", {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
-    toast.success("Registration Successful");
+      toast.success("Registration Successful");
 
-    navigate("/login");
-  } catch (error) {
-    toast.error(
-      error.response?.data?.message || "Something went wrong"
-    );
-  }
-};
+      navigate("/login");
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          (error.response ? "Registration failed" : "Cannot reach the server")
+      );
+    }
+  };
 
   const handleGoogleSignup = () => {
     console.log("Google Signup Clicked");
@@ -123,6 +124,7 @@ const handleSubmit = async (e) => {
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                required
               />
             </div>
 
@@ -137,6 +139,7 @@ const handleSubmit = async (e) => {
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
 
@@ -151,6 +154,7 @@ const handleSubmit = async (e) => {
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
 

@@ -17,7 +17,10 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await API.post("/auth/login", { email, password });
+      const res = await API.post("/auth/login", {
+        email: email.trim().toLowerCase(),
+        password,
+      });
       dispatch(loginSuccess({ token: res.data.token, user: res.data.user }));
       toast.success("Login Successful");
 
@@ -31,7 +34,10 @@ const Login = () => {
       const redirectTo = location.state?.redirectTo || "/";
       navigate(redirectTo);
     } catch (error) {
-      toast.error(error.response?.data?.message || "Invalid Credentials");
+      toast.error(
+        error.response?.data?.message ||
+          (error.response ? "Invalid Credentials" : "Cannot reach the server")
+      );
     } finally {
       setLoading(false);
     }
