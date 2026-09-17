@@ -27,6 +27,9 @@ const invitationRoutes = require("./routes/invitationRoutes");
 
 const app = express();
 
+// Render forwards the original client IP through one trusted proxy hop.
+app.set("trust proxy", 1);
+
 connectDB();
 
 app.use(cors());
