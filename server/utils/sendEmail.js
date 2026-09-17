@@ -5,10 +5,7 @@ const nodemailer = require("nodemailer");
 if (!process.env.SMTP_HOST) {
   throw new Error("SMTP_HOST must be configured before sending email");
 }
-console.log("SMTP_HOST:", process.env.SMTP_HOST);
-console.log("SMTP_USER:", process.env.SMTP_USER);
-console.log("SMTP_PASS set:", !!process.env.SMTP_PASS);
-console.log("SMTP_PASS value:", JSON.stringify(process.env.SMTP_PASS));
+
 const mailer = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT) || 465,
