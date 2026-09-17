@@ -6,16 +6,24 @@ const createActivity = require("../utils/createActivity");
 const User = require("../models/User");
 const crypto = require("crypto");
 const sendInviteEmail = require("../utils/sendEmail");
+
+const generateJoinCode = () => crypto.randomBytes(4).toString("hex").toUpperCase();
+const isWorkspaceOwner = (workspace, userId) => workspace.owner.toString() === userId.toString();
+
 const createWorkspace = async (req, res) => {
-  
   try {
     const { name, description } = req.body;
+    let joinCode;
+    do {
+      joinCode = generateJoinCode();
+    } while (await Workspace.exists({ joinCode }));
 
     const workspace = await Workspace.create({
       name,
       description,
       owner: req.user.id,
       members: [req.user.id],
+      joinCode,
     });
 
     const populatedWorkspace = await Workspace.findById(workspace._id)
@@ -42,7 +50,10 @@ const createWorkspace = async (req, res) => {
 const addMemberToWorkspace = async (req, res) => {
   try {
     const { workspaceId } = req.params;
-    const { email } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email address is required" });
+    }
 
     const workspace = await Workspace.findById(workspaceId).populate("owner", "name email");
     if (!workspace) {
@@ -50,6 +61,9 @@ const addMemberToWorkspace = async (req, res) => {
     }
 
     const existingUser = await User.findOne({ email });
+    if (!existingUser) {
+      return res.status(404).json({ success: false, message: "Only registered users can be invited" });
+    }
     if (existingUser && workspace.members.includes(existingUser._id)) {
       return res.status(400).json({ success: false, message: "User already a member" });
     }
@@ -80,6 +94,107 @@ const addMemberToWorkspace = async (req, res) => {
 
 
     res.status(200).json({ success: true, message: "Invitation email sent successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const requestToJoinWorkspace = async (req, res) => {
+  try {
+    const code = String(req.body.code || "").trim().toUpperCase();
+    if (!code) return res.status(400).json({ success: false, message: "Enter a workspace code" });
+
+    const workspace = await Workspace.findOne({ joinCode: code });
+    if (!workspace) return res.status(404).json({ success: false, message: "Workspace code not found" });
+    if (workspace.members.some((memberId) => memberId.toString() === req.user.id.toString())) {
+      return res.status(400).json({ success: false, message: "You are already a member of this workspace" });
+    }
+    if (workspace.joinRequests.some((request) => request.user.toString() === req.user.id.toString() && request.status === "PENDING")) {
+      return res.status(400).json({ success: false, message: "Your join request is already pending" });
+    }
+
+    workspace.joinRequests.push({ user: req.user.id });
+    await workspace.save();
+    res.status(201).json({ success: true, message: `Join request sent to the owner of ${workspace.name}` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getWorkspaceJoinRequests = async (req, res) => {
+  try {
+    const workspace = await Workspace.findById(req.params.workspaceId).populate("joinRequests.user", "name email image");
+    if (!workspace) return res.status(404).json({ success: false, message: "Workspace not found" });
+    if (!isWorkspaceOwner(workspace, req.user.id)) {
+      return res.status(403).json({ success: false, message: "Only the workspace owner can manage join requests" });
+    }
+    res.json({
+      success: true,
+      requests: workspace.joinRequests.filter((request) => request.status === "PENDING").sort((a, b) => b.createdAt - a.createdAt),
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const reviewWorkspaceJoinRequest = async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!["APPROVED", "REJECTED"].includes(status)) {
+      return res.status(400).json({ success: false, message: "Invalid request status" });
+    }
+    const workspace = await Workspace.findById(req.params.workspaceId);
+    if (!workspace) return res.status(404).json({ success: false, message: "Workspace not found" });
+    if (!isWorkspaceOwner(workspace, req.user.id)) {
+      return res.status(403).json({ success: false, message: "Only the workspace owner can review join requests" });
+    }
+
+    const request = workspace.joinRequests.id(req.params.requestId);
+    if (!request || !["PENDING", "ACCEPTED"].includes(request.status)) {
+      return res.status(404).json({ success: false, message: "Pending join request not found" });
+    }
+    // ACCEPTED was never a valid join-request status, but normalize legacy records
+    // so an old manually edited request can be repaired through this endpoint.
+    request.status = status === "APPROVED" ? "APPROVED" : "REJECTED";
+    request.reviewedAt = new Date();
+    if (status === "APPROVED" && !workspace.members.some((memberId) => memberId.toString() === request.user.toString())) {
+      workspace.members.push(request.user);
+    }
+    await workspace.save();
+    await createActivity({
+      action: status === "APPROVED" ? "Member joined workspace" : "Workspace join request rejected",
+      entityType: "WORKSPACE",
+      entityId: workspace._id,
+      user: request.user,
+      workspace: workspace._id,
+    });
+    res.json({ success: true, message: status === "APPROVED" ? "Member approved" : "Join request rejected" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getMyJoinRequests = async (req, res) => {
+  try {
+    const workspaces = await Workspace.find({ "joinRequests.user": req.user.id }).select("name joinRequests");
+    const requests = workspaces.flatMap((workspace) => workspace.joinRequests
+      .filter((request) => request.user.toString() === req.user.id.toString() && request.status !== "PENDING")
+      .map((request) => ({
+        _id: request._id,
+        status: request.status === "ACCEPTED" ? "APPROVED" : request.status,
+        createdAt: request.createdAt,
+        reviewedAt: request.reviewedAt,
+        workspace: { _id: workspace._id, name: workspace.name },
+      })));
+    const latestRequestsByWorkspace = new Map();
+    requests.forEach((request) => {
+      const workspaceId = request.workspace._id.toString();
+      const current = latestRequestsByWorkspace.get(workspaceId);
+      if (!current || new Date(request.createdAt) > new Date(current.createdAt)) {
+        latestRequestsByWorkspace.set(workspaceId, request);
+      }
+    });
+    res.json({ success: true, requests: [...latestRequestsByWorkspace.values()] });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -210,6 +325,12 @@ const getWorkspaces = async (req, res) => {
 
     const workspacesWithProjects = await Promise.all(
       workspaces.map(async (ws) => {
+        if (!ws.joinCode) {
+          do {
+            ws.joinCode = generateJoinCode();
+          } while (await Workspace.exists({ joinCode: ws.joinCode, _id: { $ne: ws._id } }));
+          await ws.save();
+        }
         const projects = await Project.find({ workspace: ws._id })
           .populate("team_lead", "name email image")
           .sort({ createdAt: -1 });
@@ -306,5 +427,9 @@ module.exports = {
   getWorkspaceInvitationDetails,
   deleteWorkspace,
   getMyInvitations,
-  declineInvitation
+  declineInvitation,
+  requestToJoinWorkspace,
+  getWorkspaceJoinRequests,
+  reviewWorkspaceJoinRequest,
+  getMyJoinRequests,
 };

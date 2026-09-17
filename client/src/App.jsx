@@ -9,7 +9,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AcceptInvite from "./pages/AcceptInvite";
 import Settings from "./pages/Settings";
-import ProtectedRoute from "./components/ProtectedRoute";
 
 
 const App = () => {
@@ -21,11 +20,7 @@ const App = () => {
 
             <Route
                 path="/"
-                element={
-                    <ProtectedRoute>
-                        <Layout />
-                    </ProtectedRoute>
-                }
+                element={<Layout />}
             >
                 <Route index          element={<Dashboard />} />
                 <Route path="team"    element={<Team />} />

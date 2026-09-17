@@ -106,9 +106,14 @@ MONGO_URI=your_mongodb_connection_string
 # Secret used to sign JWTs — use a long, random string
 JWT_SECRET=your_long_random_secret
 
-# SendGrid (used for invitation/notification emails)
-SENDGRID_API_KEY=your_sendgrid_api_key
-EMAIL_FROM=your_verified_sender_email@example.com
+# SMTP (Brevo offers a free plan with 300 emails/day)
+# Create a Brevo account, verify your sender email, and copy the SMTP key.
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_brevo_login_email
+SMTP_PASS=your_brevo_smtp_key
+EMAIL_FROM=ProjectFlow <your_verified_sender_email@example.com>
 
 # Frontend URL (used to build invite links)
 CLIENT_URL=http://localhost:5173

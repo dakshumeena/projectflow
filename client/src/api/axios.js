@@ -29,6 +29,8 @@ API.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
+      const redirectTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      sessionStorage.setItem("redirectTo", redirectTo);
       window.location.href = "/login";
     }
     return Promise.reject(error);

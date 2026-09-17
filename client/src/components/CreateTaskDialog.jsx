@@ -7,8 +7,7 @@ import toast from "react-hot-toast";
 
 export default function CreateTaskDialog({ showCreateTask, setShowCreateTask, projectId, onTaskCreated }) {
   const currentWorkspace = useSelector((state) => state.workspace?.currentWorkspace || null);
-  const project = currentWorkspace?.projects?.find((p) => p._id === projectId);
-  const teamMembers = project?.members || [];
+  const teamMembers = currentWorkspace?.members || [];
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({

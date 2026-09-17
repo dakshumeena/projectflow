@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { Plus, Search, FolderOpen } from "lucide-react";
 import ProjectCard from "../components/ProjectCard";
 import CreateProjectDialog from "../components/CreateProjectDialog";
@@ -9,6 +10,21 @@ export default function Projects() {
     const projects = useSelector(
         (state) => state?.workspace?.currentWorkspace?.projects || []
     );
+    const currentWorkspace = useSelector((state) => state.workspace.currentWorkspace);
+    const currentUser = useSelector((state) => state.auth.user);
+    const userId = currentUser?._id || currentUser?.id;
+    const workspaceOwnerId = currentWorkspace?.owner?._id || currentWorkspace?.owner;
+    const isWorkspaceAdmin = Boolean(userId && workspaceOwnerId && String(userId) === String(workspaceOwnerId));
+    const navigate = useNavigate();
+    const canStartProject = !currentUser || isWorkspaceAdmin;
+
+    const handleStartProject = () => {
+        if (!currentUser) {
+            navigate("/login", { state: { redirectTo: "/projects" } });
+            return;
+        }
+        setIsDialogOpen(true);
+    };
 
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -49,10 +65,14 @@ export default function Projects() {
                     <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white mb-1"> Projects </h1>
                     <p className="text-gray-500 dark:text-zinc-400 text-sm"> Manage and track your projects </p>
                 </div>
-                <button onClick={() => setIsDialogOpen(true)} className="flex items-center px-5 py-2 text-sm rounded bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:opacity-90 transition" >
-                    <Plus className="size-4 mr-2" /> New Project
-                </button>
-                <CreateProjectDialog isDialogOpen={isDialogOpen} setIsDialogOpen={setIsDialogOpen} />
+                {canStartProject && (
+                    <>
+                        <button onClick={handleStartProject} className="flex items-center px-5 py-2 text-sm rounded bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:opacity-90 transition" >
+                            <Plus className="size-4 mr-2" /> {currentUser ? "New Project" : "Sign in to create"}
+                        </button>
+                        {currentUser && <CreateProjectDialog isDialogOpen={isDialogOpen} setIsDialogOpen={setIsDialogOpen} />}
+                    </>
+                )}
             </div>
 
             {/* Search and Filters */}
@@ -90,10 +110,12 @@ export default function Projects() {
                         <p className="text-gray-500 dark:text-zinc-400 mb-6 text-sm">
                             Create your first project to get started
                         </p>
-                        <button onClick={() => setIsDialogOpen(true)} className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mx-auto text-sm" >
-                            <Plus className="size-4" />
-                            Create Project
-                        </button>
+                        {canStartProject && (
+                            <button onClick={handleStartProject} className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mx-auto text-sm" >
+                                <Plus className="size-4" />
+                                {currentUser ? "Create Project" : "Sign in to create"}
+                            </button>
+                        )}
                     </div>
                 ) : (
                     filteredProjects.map((project) => (

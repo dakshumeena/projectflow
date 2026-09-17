@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Project = require("../models/Project");
 const ProjectMember = require("../models/ProjectMember");
 const User = require("../models/User");
@@ -5,6 +6,9 @@ const Invitation = require("../models/Invitation");
 const createActivity = require("../utils/createActivity");
 const crypto = require("crypto");
 const Task = require("../models/Task");
+const Workspace = require("../models/Workspace");
+const { getProjectAccess, canManageProject } = require("../utils/projectPermissions");
+const sendInviteEmail = require("../utils/sendEmail");
 
 const createProject = async (req, res) => {
   try {
@@ -13,27 +17,43 @@ const createProject = async (req, res) => {
       priority, start_date, end_date, team_lead, team_members,
     } = req.body;
 
-    const project = await Project.create({
-      name, description, workspace, status, priority,
-      start_date, end_date,
-      team_lead: team_lead || req.user.id,
-    });
+    const workspaceRecord = await Workspace.findById(workspace).select("owner");
+    if (!workspaceRecord) {
+      return res.status(404).json({ success: false, message: "Workspace not found" });
+    }
+    if (workspaceRecord.owner.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ success: false, message: "Only the workspace admin can create projects" });
+    }
 
-    const memberSet = new Set([req.user.id]);
-    if (team_lead) memberSet.add(team_lead);
-    if (Array.isArray(team_members)) team_members.forEach((e) => memberSet.add(e));
-
+    const memberValues = [req.user.id, team_lead, ...(Array.isArray(team_members) ? team_members : [])]
+      .filter(Boolean);
     const resolvedIds = await Promise.all(
-      [...memberSet].map(async (idOrEmail) => {
-        if (idOrEmail.includes("@")) {
-          const u = await User.findOne({ email: idOrEmail });
-          return u ? u._id.toString() : null;
+      memberValues.map(async (idOrEmail) => {
+        if (typeof idOrEmail === "string" && idOrEmail.includes("@")) {
+          const user = await User.findOne({ email: idOrEmail });
+          return user?._id?.toString();
         }
         return idOrEmail;
       })
     );
+    const uniqueIds = [...new Set(resolvedIds.filter(Boolean).map(String))];
+    const leadId = team_lead
+      ? resolvedIds[memberValues.indexOf(team_lead)]
+      : req.user.id;
 
-    const uniqueIds = [...new Set(resolvedIds.filter(Boolean))];
+    if (!uniqueIds.includes(String(req.user.id))) {
+      return res.status(400).json({ success: false, message: "Invalid project members" });
+    }
+    if (!leadId || !mongoose.Types.ObjectId.isValid(leadId)) {
+      return res.status(400).json({ success: false, message: "Invalid project lead" });
+    }
+
+    const project = await Project.create({
+      name, description, workspace, status, priority,
+      start_date, end_date,
+      team_lead: leadId,
+    });
+
     await ProjectMember.insertMany(
       uniqueIds.map((uid) => ({ user: uid, project: project._id })),
       { ordered: false }
@@ -88,12 +108,32 @@ const getProjectById = async (req, res) => {
 
 const updateProject = async (req, res) => {
   try {
-    const project = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true })
-      .populate("team_lead", "name email image");
-
-    if (!project) {
+    const existingProject = await Project.findById(req.params.id);
+    if (!existingProject) {
       return res.status(404).json({ success: false, message: "Project not found" });
     }
+
+    const access = await getProjectAccess(existingProject, req.user.id);
+    if (!access?.isMember) {
+      return res.status(403).json({ success: false, message: "You are not a member of this project" });
+    }
+
+    const requestedFields = Object.keys(req.body);
+    if (!canManageProject(access) && requestedFields.some((field) => !["status", "progress"].includes(field))) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the project admin or lead can edit project details",
+      });
+    }
+
+    const allowedFields = canManageProject(access)
+      ? ["name", "description", "status", "priority", "start_date", "end_date", "progress", "team_lead"]
+      : ["status", "progress"];
+    allowedFields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(req.body, field)) existingProject[field] = req.body[field];
+    });
+    const project = await existingProject.save();
+    await project.populate("team_lead", "name email image");
 
     await createActivity({
       action: "Project Updated",
@@ -116,6 +156,11 @@ const deleteProject = async (req, res) => {
       return res.status(404).json({ success: false, message: "Project not found" });
     }
 
+    const access = await getProjectAccess(project, req.user.id);
+    if (!access?.isAdmin) {
+      return res.status(403).json({ success: false, message: "Only the workspace admin can delete this project" });
+    }
+
     await createActivity({
       action: "Project Deleted",
       entityType: "PROJECT",
@@ -135,13 +180,25 @@ const deleteProject = async (req, res) => {
 
 const addMemberToProject = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email address is required" });
+    }
     const project = await Project.findById(req.params.id);
     if (!project) {
       return res.status(404).json({ success: false, message: "Project not found" });
     }
 
+    const access = await getProjectAccess(project, req.user.id);
+    if (!canManageProject(access)) {
+      return res.status(403).json({ success: false, message: "Only the project admin or lead can manage members" });
+    }
+
     const existingUser = await User.findOne({ email });
+
+    if (!existingUser) {
+      return res.status(404).json({ success: false, message: "Only registered users can be invited" });
+    }
 
     if (existingUser) {
       const existingMember = await ProjectMember.findOne({ user: existingUser._id, project: project._id });
@@ -169,30 +226,12 @@ const addMemberToProject = async (req, res) => {
 
     const inviter = await User.findById(req.user.id).select("name");
 
-    const emailResult = await sendInviteEmail({
-      to: email,
+    await sendInviteEmail({
+      email,
       projectName: project.name,
       inviteLink,
       invitedByName: inviter?.name,
     });
-
-    if (!emailResult.success) {
-      return res.status(200).json({
-        success: true,
-        message: "Invitation created, but the email could not be sent. Share this link manually.",
-        inviteLink,
-      });
-    }
-
-    res.status(200).json({ success: true, message: "Invitation email sent successfully" });
-
-    if (!emailResult.success) {
-      return res.status(200).json({
-        success: true,
-        message: "Invitation created, but the email could not be sent. Share this link manually.",
-        inviteLink,
-      });
-    }
 
     res.status(200).json({ success: true, message: "Invitation email sent successfully" });
   } catch (error) {

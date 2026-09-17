@@ -1,12 +1,12 @@
 const dns = require("dns");
 dns.setDefaultResultOrder("ipv4first");
 require("dotenv").config();
-
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 
 const connectDB = require("./config/db");
+const { apiLimiter } = require("./middleware/rateLimiter");
 
 // Register all models FIRST so populate() works across files
 require("./models/User");
@@ -31,6 +31,8 @@ connectDB();
 
 app.use(cors());
 app.use(express.json());
+
+app.use("/api", apiLimiter);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/workspaces", workspaceRoutes);

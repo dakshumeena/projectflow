@@ -1,15 +1,20 @@
-import { FcGoogle } from "react-icons/fc";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import API from "../api/axios";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { ArrowUpRight } from "lucide-react";
 
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const theme = localStorage.getItem("theme");
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, []);
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -31,97 +36,35 @@ const Register = () => {
     }
   };
 
-  const handleGoogleSignup = () => {
-    console.log("Google Signup Clicked");
-  };
-
   return (
-    <div className="min-h-screen flex">
-      {/* Left Section */}
-      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-500 text-white flex-col justify-center px-16">
-        <h1 className="text-5xl font-bold mb-6">
-          ProjectFlow
-        </h1>
-
-        <p className="text-xl text-gray-100 leading-relaxed">
-          Create your workspace, manage projects, assign tasks,
-          and collaborate with your team efficiently.
-        </p>
-
-        <div className="mt-10 space-y-4">
-          <div className="flex items-center gap-3">
-            <span>🚀</span>
-            <p>Create Unlimited Projects</p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span>👥</span>
-            <p>Manage Team Members</p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span>📋</span>
-            <p>Track Tasks Easily</p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span>📊</span>
-            <p>Monitor Project Progress</p>
-          </div>
+    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-zinc-950 dark:text-white lg:grid lg:grid-cols-[0.95fr_1.05fr]">
+      <section className="relative order-2 hidden min-h-screen overflow-hidden bg-gradient-to-br from-blue-600 to-blue-500 px-12 py-10 text-white dark:from-zinc-900 dark:to-zinc-800 lg:order-1 lg:flex lg:flex-col lg:justify-between xl:px-20">
+        <div className="absolute -bottom-24 -left-20 size-80 rounded-full border-[3rem] border-white/10" />
+        <div className="relative flex items-center gap-3 text-sm font-semibold tracking-[0.2em] uppercase"><span className="flex size-9 items-center justify-center rounded-full bg-white/20">P</span>ProjectFlow</div>
+        <div className="relative max-w-xl">
+          <p className="mb-5 text-xs font-semibold tracking-[0.25em] text-blue-100 uppercase">A better starting point</p>
+          <h1 className="max-w-lg text-5xl font-semibold leading-[0.98] tracking-tight xl:text-7xl">Turn scattered work into shared momentum.</h1>
+          <p className="mt-7 max-w-md text-lg leading-8 text-blue-50">Bring projects, people, and priorities into one clear rhythm from day one.</p>
+          <div className="mt-10 space-y-4 text-sm font-semibold text-blue-50">{["Set up your workspace", "Invite the right people", "See what moves next"].map((item, index) => <div key={item} className="flex items-center gap-3"><span className="flex size-7 items-center justify-center rounded-full bg-white/20 text-xs text-white">0{index + 1}</span>{item}</div>)}</div>
         </div>
-      </div>
+        <p className="relative text-xs text-blue-100">One focused place for the work that matters.</p>
+      </section>
 
-      {/* Right Section */}
-      <div className="flex-1 flex items-center justify-center bg-slate-100 p-6">
-        <div className="w-full max-w-md bg-white shadow-2xl rounded-2xl p-8">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-800">
-              Create Account ✨
-            </h2>
+      <main className="order-1 flex min-h-screen items-center justify-center px-5 py-10 sm:px-10 lg:order-2">
+        <div className="w-full max-w-md">
+          <div className="mb-10 lg:hidden"><div className="flex items-center gap-3 text-sm font-semibold tracking-[0.2em] uppercase"><span className="flex size-9 items-center justify-center rounded-full bg-blue-600 text-white">P</span>ProjectFlow</div></div>
+          <div className="mb-7"><p className="mb-3 text-xs font-semibold tracking-[0.2em] text-gray-500 dark:text-zinc-400 uppercase">Start with clarity</p><h2 className="text-4xl font-semibold tracking-tight">Build your team&apos;s next chapter.</h2><p className="mt-3 text-sm leading-6 text-gray-500 dark:text-zinc-400">Create an account and give your work a place to land.</p></div>
 
-            <p className="text-gray-500 mt-2">
-              Start managing your projects today
-            </p>
-          </div>
-
-          {/* Google Button */}
-          <button
-            type="button"
-            onClick={handleGoogleSignup}
-            className="w-full flex items-center justify-center gap-3 border border-gray-300 bg-white py-3 rounded-lg font-medium hover:bg-gray-50 transition duration-200"
-          >
-           <FcGoogle className="text-xl" />
-
-            Continue with Google
-          </button>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-
-            <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-sm text-gray-500">
-                OR
-              </span>
-            </div>
-          </div>
-
-          {/* Register Form */}
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-5"
-          >
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">
-                Full Name
-              </label>
+              <label htmlFor="register-name" className="mb-2 block text-xs font-semibold tracking-wide text-gray-600 dark:text-zinc-300 uppercase">Full name</label>
 
               <input
+                id="register-name"
                 type="text"
-                placeholder="Enter your name"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                autoComplete="name"
+                placeholder="Alex Morgan"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:placeholder:text-zinc-500"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -129,14 +72,14 @@ const Register = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">
-                Email
-              </label>
+              <label htmlFor="register-email" className="mb-2 block text-xs font-semibold tracking-wide text-gray-600 dark:text-zinc-300 uppercase">Work email</label>
 
               <input
                 type="email"
-                placeholder="Enter your email"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                id="register-email"
+                autoComplete="email"
+                placeholder="you@company.com"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:placeholder:text-zinc-500"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -144,39 +87,29 @@ const Register = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700">
-                Password
-              </label>
+              <label htmlFor="register-password" className="mb-2 block text-xs font-semibold tracking-wide text-gray-600 dark:text-zinc-300 uppercase">Password</label>
 
               <input
                 type="password"
-                placeholder="Create a password"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                id="register-password"
+                autoComplete="new-password"
+                placeholder="Create a secure password"
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:placeholder:text-zinc-500"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold transition"
-            >
-              Create Account
+            <button type="submit" className="group flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-blue-700">
+              Create account
+              <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </button>
           </form>
 
-          <p className="text-center text-gray-600 mt-6">
-            Already have an account?{" "}
-            <Link
-              to="/login"
-              className="text-indigo-600 font-semibold hover:underline"
-            >
-              Login
-            </Link>
-          </p>
+          <p className="mt-7 text-center text-sm text-gray-500 dark:text-zinc-400">Already have an account? <Link to="/login" className="font-semibold text-blue-600 underline underline-offset-4 hover:text-blue-700 dark:text-blue-400">Sign in</Link></p>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

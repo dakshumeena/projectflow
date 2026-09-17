@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { ArrowRight, Clock, AlertTriangle, User } from "lucide-react";
 import { useSelector } from "react-redux";
 

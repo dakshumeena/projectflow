@@ -46,7 +46,7 @@ function WorkspaceDropdown() {
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded shadow bg-blue-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-            {user?.name?.charAt(0).toUpperCase() || "U"}
+            {user?.name?.charAt(0).toUpperCase() || ""}
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-gray-800 dark:text-white text-sm truncate">
@@ -73,7 +73,7 @@ function WorkspaceDropdown() {
                 className="flex items-center gap-3 p-2 cursor-pointer rounded hover:bg-gray-100 dark:hover:bg-zinc-800"
               >
                 <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                    {user?.name?.charAt(0).toUpperCase() || "U"}
+                    {user?.name?.charAt(0).toUpperCase() || ""}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-800 dark:text-white truncate">
@@ -94,7 +94,14 @@ function WorkspaceDropdown() {
 
           <div className="p-2">
             <button
-              onClick={() => { setIsOpen(false); setIsWorkspaceDialogOpen(true); }}
+              onClick={() => {
+                setIsOpen(false);
+                if (!user) {
+                  navigate("/login", { state: { redirectTo: "/" } });
+                  return;
+                }
+                setIsWorkspaceDialogOpen(true);
+              }}
               className="flex items-center text-xs gap-2 my-1 w-full text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-zinc-800"
             >
               <Plus className="w-4 h-4" /> Create Workspace

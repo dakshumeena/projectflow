@@ -17,6 +17,11 @@ const Layout = () => {
     }, [])
 
     useEffect(() => {
+        if (!localStorage.getItem("token")) {
+            dispatch(setWorkspaces([]));
+            return undefined;
+        }
+
         const fetchWorkspaces = async () => {
             try {
                 const data = await getWorkspaces();
@@ -26,6 +31,15 @@ const Layout = () => {
             }
         };
         fetchWorkspaces();
+
+        const refreshOnFocus = () => fetchWorkspaces();
+        const refreshInterval = window.setInterval(fetchWorkspaces, 5000);
+        window.addEventListener('focus', refreshOnFocus);
+
+        return () => {
+            window.clearInterval(refreshInterval);
+            window.removeEventListener('focus', refreshOnFocus);
+        };
     }, [])
 
     return (

@@ -43,7 +43,9 @@ const ActivityModal = ({ onClose }) => {
     try {
       const d = await getWorkspaceActivities(currentWorkspace._id);
       setActivities(d.activities || []);
-    } catch {}
+    } catch (error) {
+      console.error("Failed to load workspace activity", error);
+    }
     finally { setLoading(false); }
   };
 

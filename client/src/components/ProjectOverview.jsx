@@ -21,6 +21,10 @@ const ProjectOverview = () => {
     };
 
     const currentWorkspace = useSelector((state) => state?.workspace?.currentWorkspace || null);
+    const currentUser = useSelector((state) => state.auth.user);
+    const userId = currentUser?._id || currentUser?.id;
+    const workspaceOwnerId = currentWorkspace?.owner?._id || currentWorkspace?.owner;
+    const isWorkspaceAdmin = Boolean(userId && workspaceOwnerId && String(userId) === String(workspaceOwnerId));
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [projects, setProjects] = useState([]);
 
@@ -44,10 +48,14 @@ const ProjectOverview = () => {
                             <FolderOpen size={32} />
                         </div>
                         <p className="text-zinc-600 dark:text-zinc-400">No projects yet</p>
-                        <button onClick={() => setIsDialogOpen(true)} className="mt-4 px-4 py-2 text-sm bg-gradient-to-br from-blue-500 to-blue-600 text-white dark:text-zinc-200 rounded hover:opacity-90 transition">
-                            Create your First Project
-                        </button>
-                        <CreateProjectDialog isDialogOpen={isDialogOpen} setIsDialogOpen={setIsDialogOpen} />
+                        {isWorkspaceAdmin && (
+                            <>
+                                <button onClick={() => setIsDialogOpen(true)} className="mt-4 px-4 py-2 text-sm bg-gradient-to-br from-blue-500 to-blue-600 text-white dark:text-zinc-200 rounded hover:opacity-90 transition">
+                                    Create your First Project
+                                </button>
+                                <CreateProjectDialog isDialogOpen={isDialogOpen} setIsDialogOpen={setIsDialogOpen} />
+                            </>
+                        )}
                     </div>
                 ) : (
                     <div className="divide-y divide-zinc-200 dark:divide-zinc-800">

@@ -9,7 +9,7 @@ import ProjectTasks from "../components/ProjectTasks";
 import { getProjectById, deleteProject } from "../api/projectApi";
 import { getTasksByProject } from "../api/taskApi";
 import { removeProjectFromWorkspace } from "../features/workspaceSlice";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 export default function ProjectDetail() {
 
@@ -18,12 +18,21 @@ export default function ProjectDetail() {
     const id = searchParams.get('id');
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const currentUser = useSelector((state) => state.auth.user);
+    const currentWorkspace = useSelector((state) => state.workspace.currentWorkspace);
 
     const [project, setProject] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [showCreateTask, setShowCreateTask] = useState(false);
     const [activeTab, setActiveTab] = useState(tab || "tasks");
     const [loading, setLoading] = useState(true);
+
+    const userId = currentUser?._id || currentUser?.id;
+    const workspaceOwnerId = currentWorkspace?.owner?._id || currentWorkspace?.owner;
+    const projectLeadId = project?.team_lead?._id || project?.team_lead;
+    const isAdmin = Boolean(userId && workspaceOwnerId && String(userId) === String(workspaceOwnerId));
+    const isProjectLead = Boolean(userId && projectLeadId && String(userId) === String(projectLeadId));
+    const canManageProject = isAdmin || isProjectLead;
 
     useEffect(() => {
         if (tab) setActiveTab(tab);
@@ -121,13 +130,17 @@ export default function ProjectDetail() {
                         </span>
                     </div>
                 </div>
-                <button onClick={() => handleDeleteProject(project._id)} className="flex items-center gap-2 px-5 py-2 text-sm rounded bg-gradient-to-br from-red-500 to-red-600 text-white">
-                    Delete Project
-                </button>
-                <button onClick={() => setShowCreateTask(true)} className="flex items-center gap-2 px-5 py-2 text-sm rounded bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-                    <PlusIcon className="size-4" />
-                    New Task
-                </button>
+                {isAdmin && (
+                    <button onClick={() => handleDeleteProject(project._id)} className="flex items-center gap-2 px-5 py-2 text-sm rounded bg-gradient-to-br from-red-500 to-red-600 text-white">
+                        Delete Project
+                    </button>
+                )}
+                {canManageProject && (
+                    <button onClick={() => setShowCreateTask(true)} className="flex items-center gap-2 px-5 py-2 text-sm rounded bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                        <PlusIcon className="size-4" />
+                        New Task
+                    </button>
+                )}
             </div>
 
             {/* Info Cards */}
@@ -175,6 +188,7 @@ export default function ProjectDetail() {
                                 tasks={tasks}
                                 onTaskUpdated={handleTaskUpdated}
                                 onTasksDeleted={handleTasksDeleted}
+                                canManageTasks={canManageProject}
                             />
                         </div>
                     )}
@@ -190,7 +204,7 @@ export default function ProjectDetail() {
                     )}
                     {activeTab === "settings" && (
                         <div className="dark:bg-zinc-900/40 rounded max-w-6xl">
-                            <ProjectSettings project={project} />
+                            <ProjectSettings project={project} canEditDetails={canManageProject} />
                         </div>
                     )}
                 </div>

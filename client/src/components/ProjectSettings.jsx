@@ -5,7 +5,7 @@ import AddProjectMember from "./AddProjectMember";
 import { updateProject } from "../api/projectApi";
 import toast from "react-hot-toast";
 
-export default function ProjectSettings({ project, onProjectUpdated }) {
+export default function ProjectSettings({ project, onProjectUpdated, canEditDetails = true }) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -73,6 +73,7 @@ export default function ProjectSettings({ project, onProjectUpdated }) {
             <label className={labelClasses}>Project Name</label>
             <input
               value={formData.name}
+              disabled={!canEditDetails}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className={inputClasses}
               required
@@ -83,6 +84,7 @@ export default function ProjectSettings({ project, onProjectUpdated }) {
             <label className={labelClasses}>Description</label>
             <textarea
               value={formData.description}
+              disabled={!canEditDetails}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className={inputClasses + " h-24"}
             />
@@ -107,6 +109,7 @@ export default function ProjectSettings({ project, onProjectUpdated }) {
               <label className={labelClasses}>Priority</label>
               <select
                 value={formData.priority}
+                disabled={!canEditDetails}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
                 className={inputClasses}
               >
@@ -123,6 +126,7 @@ export default function ProjectSettings({ project, onProjectUpdated }) {
               <input
                 type="date"
                 value={formData.start_date}
+                disabled={!canEditDetails}
                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 className={inputClasses}
               />
@@ -132,6 +136,7 @@ export default function ProjectSettings({ project, onProjectUpdated }) {
               <input
                 type="date"
                 value={formData.end_date}
+                disabled={!canEditDetails}
                 min={formData.start_date}
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 className={inputClasses}
@@ -172,14 +177,14 @@ export default function ProjectSettings({ project, onProjectUpdated }) {
                 ({project?.members?.length || 0})
               </span>
             </h2>
-            <button
+            {canEditDetails && <button
               type="button"
               onClick={() => setIsDialogOpen(true)}
               className="p-2 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               <Plus className="size-4 text-zinc-900 dark:text-zinc-300" />
-            </button>
-            <AddProjectMember isDialogOpen={isDialogOpen} setIsDialogOpen={setIsDialogOpen} />
+            </button>}
+            {canEditDetails && <AddProjectMember isDialogOpen={isDialogOpen} setIsDialogOpen={setIsDialogOpen} />}
           </div>
 
           {project?.members?.length > 0 && (

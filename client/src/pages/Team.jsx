@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { UsersIcon, Search, UserPlus, Shield, Activity,User } from "lucide-react";
+import { UsersIcon, Search, UserPlus, Shield, Activity, User, Copy, KeyRound, Check, X, Clock } from "lucide-react";
 import InviteMemberDialog from "../components/InviteMemberDialog";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import API from "../api/axios";
+import { setWorkspaces } from "../features/workspaceSlice";
+import toast from "react-hot-toast";
 
 
 const Team = () => {
@@ -10,9 +13,19 @@ const Team = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [users, setUsers] = useState([]);
+    const [joinCode, setJoinCode] = useState("");
+    const [joinRequests, setJoinRequests] = useState([]);
+    const [invitations, setInvitations] = useState([]);
+    const [isSubmittingCode, setIsSubmittingCode] = useState(false);
+    const [reviewingRequest, setReviewingRequest] = useState(null);
+    const [processingInvitation, setProcessingInvitation] = useState(null);
+    const dispatch = useDispatch();
     const currentWorkspace = useSelector((state) => state?.workspace?.currentWorkspace || null);
     const projects = currentWorkspace?.projects || [];
     const { user } = useSelector(state => state.auth);
+    const userId = user?.id || user?._id;
+    const ownerId = currentWorkspace?.owner?._id || currentWorkspace?.owner?.id || currentWorkspace?.owner;
+    const isOwner = Boolean(userId && ownerId && String(ownerId) === String(userId));
 
     const filteredUsers = users.filter(
         (user) =>
@@ -24,6 +37,90 @@ const Team = () => {
         setUsers(currentWorkspace?.members || []);
         setTasks(currentWorkspace?.projects?.reduce((acc, project) => [...acc, ...(project.tasks || [])], []) || []);
     }, [currentWorkspace]);
+
+    useEffect(() => {
+        const fetchInvitations = async () => {
+            if (!user) return setInvitations([]);
+            try {
+                const res = await API.get("/workspaces/my-invitations");
+                setInvitations(res.data.invitations || []);
+            } catch (error) {
+                toast.error(error?.response?.data?.message || "Failed to load invitations");
+            }
+        };
+        fetchInvitations();
+    }, [user?.id, user?._id]);
+
+    useEffect(() => {
+        const fetchJoinRequests = async () => {
+            if (!currentWorkspace?._id || !isOwner) return setJoinRequests([]);
+            try {
+                const res = await API.get(`/workspaces/${currentWorkspace._id}/join-requests`);
+                setJoinRequests(res.data.requests || []);
+            } catch (error) {
+                toast.error(error?.response?.data?.message || "Failed to load join requests");
+            }
+        };
+        fetchJoinRequests();
+    }, [currentWorkspace?._id, isOwner]);
+
+    const respondToInvitation = async (token, action) => {
+        setProcessingInvitation(token);
+        try {
+            const invitation = invitations.find((item) => item.token === token);
+            const endpoint = action === "accept" && invitation?.type === "PROJECT"
+                ? `/invitations/${token}/accept`
+                : `/workspaces/invite/${token}/${action}`;
+            await API.post(endpoint);
+            setInvitations((current) => current.filter((invitation) => invitation.token !== token));
+            if (action === "accept") {
+                const refreshed = await API.get("/workspaces");
+                dispatch(setWorkspaces(refreshed.data.workspaces));
+            }
+            toast.success(action === "accept" ? "Workspace joined!" : "Invitation declined");
+        } catch (error) {
+            toast.error(error?.response?.data?.message || "Failed to update invitation");
+        } finally {
+            setProcessingInvitation(null);
+        }
+    };
+
+    const submitJoinRequest = async (event) => {
+        event.preventDefault();
+        if (!joinCode.trim()) return;
+        setIsSubmittingCode(true);
+        try {
+            const res = await API.post("/workspaces/join-requests", { code: joinCode });
+            toast.success(res.data.message);
+            setJoinCode("");
+        } catch (error) {
+            toast.error(error?.response?.data?.message || "Failed to send join request");
+        } finally {
+            setIsSubmittingCode(false);
+        }
+    };
+
+    const copyJoinCode = async () => {
+        await navigator.clipboard.writeText(currentWorkspace.joinCode);
+        toast.success("Workspace code copied");
+    };
+
+    const reviewJoinRequest = async (requestId, status) => {
+        setReviewingRequest(requestId);
+        try {
+            await API.patch(`/workspaces/${currentWorkspace._id}/join-requests/${requestId}`, { status });
+            setJoinRequests((requests) => requests.filter((request) => request._id !== requestId));
+            if (status === "APPROVED") {
+                const refreshed = await API.get("/workspaces");
+                dispatch(setWorkspaces(refreshed.data.workspaces));
+            }
+            toast.success(status === "APPROVED" ? "Member approved" : "Request rejected");
+        } catch (error) {
+            toast.error(error?.response?.data?.message || "Failed to review request");
+        } finally {
+            setReviewingRequest(null);
+        }
+    };
 
     return (
         <div className="space-y-6 max-w-6xl mx-auto">
@@ -40,6 +137,82 @@ const Team = () => {
                 </button>
                 <InviteMemberDialog isDialogOpen={isDialogOpen} setIsDialogOpen={setIsDialogOpen} />
             </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+                <div className="border border-blue-200 dark:border-blue-500/30 rounded-lg p-5 bg-blue-50/60 dark:bg-blue-500/5">
+                    <div className="flex items-center gap-2 mb-1">
+                        <KeyRound className="size-4 text-blue-600 dark:text-blue-400" />
+                        <h2 className="font-semibold text-gray-900 dark:text-white">Workspace code</h2>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">Share this code with people who need to request access.</p>
+                    <div className="flex items-center gap-2">
+                        <code className="flex-1 rounded border border-blue-200 dark:border-blue-500/30 bg-white dark:bg-zinc-900 px-3 py-2 text-lg font-semibold tracking-[0.2em] text-blue-700 dark:text-blue-300">
+                            {currentWorkspace?.joinCode || "Unavailable"}
+                        </code>
+                        <button type="button" onClick={copyJoinCode} disabled={!currentWorkspace?.joinCode} className="p-2 rounded border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-500/10 disabled:opacity-50" title="Copy workspace code">
+                            <Copy className="size-4" />
+                        </button>
+                    </div>
+                </div>
+
+                <form onSubmit={submitJoinRequest} className="border border-gray-200 dark:border-zinc-800 rounded-lg p-5">
+                    <div className="flex items-center gap-2 mb-1">
+                        <UsersIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
+                        <h2 className="font-semibold text-gray-900 dark:text-white">Join another workspace</h2>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4">Enter a workspace code to send an access request to its owner.</p>
+                    <div className="flex gap-2">
+                        <input value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} placeholder="8-character code" maxLength={8} className="flex-1 rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm tracking-widest focus:outline-none focus:border-blue-500" />
+                        <button type="submit" disabled={isSubmittingCode || !joinCode.trim()} className="px-4 py-2 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-50">{isSubmittingCode ? "Sending..." : "Request access"}</button>
+                    </div>
+                </form>
+            </div>
+
+            {invitations.length > 0 && (
+                <section className="border border-blue-200 dark:border-blue-500/30 rounded-lg p-5 bg-blue-50/50 dark:bg-blue-500/5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <UserPlus className="size-4 text-blue-600 dark:text-blue-400" />
+                        <h2 className="font-semibold text-gray-900 dark:text-white">Pending invitations ({invitations.length})</h2>
+                    </div>
+                    <div className="space-y-3">
+                        {invitations.map((invitation) => (
+                            <div key={invitation._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded border border-blue-200 dark:border-blue-500/20 bg-white dark:bg-zinc-900 p-3">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{invitation.workspace?.name || "Workspace invitation"}</p>
+                                    <p className="text-xs text-gray-500 dark:text-zinc-400">Invited by {invitation.invitedBy?.name || "a teammate"}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button type="button" onClick={() => respondToInvitation(invitation.token, "accept")} disabled={processingInvitation === invitation.token} className="flex items-center gap-1 px-3 py-1.5 rounded bg-blue-600 text-white text-xs hover:bg-blue-700 disabled:opacity-50"><Check className="size-3" /> Accept</button>
+                                    <button type="button" onClick={() => respondToInvitation(invitation.token, "decline")} disabled={processingInvitation === invitation.token} className="flex items-center gap-1 px-3 py-1.5 rounded border border-red-200 text-red-600 text-xs hover:bg-red-50 dark:border-red-500/30 dark:hover:bg-red-500/10 disabled:opacity-50"><X className="size-3" /> Reject</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {isOwner && joinRequests.length > 0 && (
+                <section className="border border-amber-200 dark:border-amber-500/30 rounded-lg p-5 bg-amber-50/50 dark:bg-amber-500/5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Clock className="size-4 text-amber-600 dark:text-amber-400" />
+                        <h2 className="font-semibold text-gray-900 dark:text-white">Pending join requests ({joinRequests.length})</h2>
+                    </div>
+                    <div className="space-y-3">
+                        {joinRequests.map((request) => (
+                            <div key={request._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded border border-amber-200 dark:border-amber-500/20 bg-white dark:bg-zinc-900 p-3">
+                                <div>
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{request.user?.name || "Unknown user"}</p>
+                                    <p className="text-xs text-gray-500 dark:text-zinc-400">{request.user?.email}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button type="button" onClick={() => reviewJoinRequest(request._id, "APPROVED")} disabled={reviewingRequest === request._id} className="flex items-center gap-1 px-3 py-1.5 rounded bg-emerald-600 text-white text-xs hover:bg-emerald-700 disabled:opacity-50"><Check className="size-3" /> Approve</button>
+                                    <button type="button" onClick={() => reviewJoinRequest(request._id, "REJECTED")} disabled={reviewingRequest === request._id} className="flex items-center gap-1 px-3 py-1.5 rounded border border-red-200 text-red-600 text-xs hover:bg-red-50 dark:border-red-500/30 dark:hover:bg-red-500/10 disabled:opacity-50"><X className="size-3" /> Reject</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             {/* Stats Cards */}
             <div className="flex flex-wrap gap-4">

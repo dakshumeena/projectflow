@@ -19,7 +19,7 @@ const priorityTexts = {
   HIGH: { background: "bg-emerald-100 dark:bg-emerald-950", prioritycolor: "text-emerald-600 dark:text-emerald-400" },
 };
 
-const ProjectTasks = ({ tasks, onTaskUpdated, onTasksDeleted }) => {
+const ProjectTasks = ({ tasks, onTaskUpdated, onTasksDeleted, canManageTasks = true }) => {
   const navigate = useNavigate();
   const [selectedTasks, setSelectedTasks] = useState([]);
   const [localTasks, setLocalTasks] = useState(tasks);
@@ -134,7 +134,7 @@ const ProjectTasks = ({ tasks, onTaskUpdated, onTasksDeleted }) => {
           </button>
         )}
 
-        {selectedTasks.length > 0 && (
+        {canManageTasks && selectedTasks.length > 0 && (
           <button
             type="button"
             onClick={handleDelete}
@@ -212,6 +212,7 @@ const ProjectTasks = ({ tasks, onTaskUpdated, onTasksDeleted }) => {
                       <td onClick={(e) => e.stopPropagation()} className="px-4 py-2">
                         <select
                           value={task.status}
+                          disabled={!canManageTasks}
                           onChange={(e) => handleStatusChange(task._id, e.target.value)}
                           className="group-hover:ring ring-zinc-100 outline-none px-2 pr-4 py-1 rounded text-sm dark:bg-zinc-800 text-zinc-900 dark:text-zinc-200 cursor-pointer"
                         >
@@ -287,6 +288,7 @@ const ProjectTasks = ({ tasks, onTaskUpdated, onTasksDeleted }) => {
                     <label className="text-zinc-600 dark:text-zinc-400 text-xs">Status</label>
                     <select
                       value={task.status}
+                      disabled={!canManageTasks}
                       onChange={(e) => handleStatusChange(task._id, e.target.value)}
                       className="w-full mt-1 bg-zinc-100 dark:bg-zinc-800 ring-1 ring-zinc-300 dark:ring-zinc-700 outline-none px-2 py-1 rounded text-sm text-zinc-900 dark:text-zinc-200"
                     >

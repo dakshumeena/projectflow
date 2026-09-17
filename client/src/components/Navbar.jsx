@@ -1,9 +1,8 @@
-import { SearchIcon, PanelLeft, Mail, LogOut, ChevronDown } from 'lucide-react'
+import { SearchIcon, PanelLeft, Mail, LogOut, ChevronDown, LogIn } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { toggleTheme } from '../features/themeSlice'
 import { logout } from '../features/authSlice'
 import { MoonIcon, SunIcon } from 'lucide-react'
-import { assets } from '../assets/assets'
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { NotificationBell } from "./NotificationsPanel";
@@ -28,13 +27,13 @@ const Navbar = ({ setIsSidebarOpen }) => {
 
     const handleLogout = () => {
         dispatch(logout());
-        navigate('/login');
+        navigate('/');
     };
 
     // Get initials for avatar fallback
     const initials = user?.name
         ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-        : 'U';
+        : '';
 
     return (
         <div className="w-full bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 px-6 xl:px-16 py-3 flex-shrink-0">
@@ -75,7 +74,7 @@ const Navbar = ({ setIsSidebarOpen }) => {
                     </button>
 
                     {/* User Dropdown */}
-                    <div className="relative" ref={dropdownRef}>
+                    {user && <div className="relative" ref={dropdownRef}>
                         <button
                             onClick={() => setDropdownOpen(prev => !prev)}
                             className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition"
@@ -89,7 +88,7 @@ const Navbar = ({ setIsSidebarOpen }) => {
                             </div>
                             {/* Name — hidden on small screens */}
                             <span className="hidden sm:block text-sm font-medium text-gray-800 dark:text-white max-w-28 truncate">
-                                {user?.name || 'User'}
+                                {user?.name || ''}
                             </span>
                             <ChevronDown className="size-3.5 text-gray-500 dark:text-zinc-400 hidden sm:block" />
                         </button>
@@ -99,7 +98,7 @@ const Navbar = ({ setIsSidebarOpen }) => {
                                 {/* User info header */}
                                 <div className="px-4 py-3 border-b border-gray-100 dark:border-zinc-800">
                                     <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                                        {user?.name || 'User'}
+                                        {user?.name || ''}
                                     </p>
                                     <div className="flex items-center gap-1.5 mt-0.5">
                                         <Mail className="size-3 text-gray-400 dark:text-zinc-500 flex-shrink-0" />
@@ -119,7 +118,16 @@ const Navbar = ({ setIsSidebarOpen }) => {
                                 </button>
                             </div>
                         )}
-                    </div>
+                    </div>}
+                    {!user && (
+                        <button
+                            onClick={() => navigate('/login')}
+                            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                        >
+                            <LogIn className="size-4" />
+                            Sign in
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

@@ -16,6 +16,13 @@ const userSchema = new mongoose.Schema(
     password:{
         type:String,
         required:true
+    },
+
+    notificationPreferences: {
+        taskAssigned: { type: Boolean, default: true },
+        projectUpdated: { type: Boolean, default: true },
+        memberJoined: { type: Boolean, default: false },
+        weeklyDigest: { type: Boolean, default: false }
     }
 },
 {

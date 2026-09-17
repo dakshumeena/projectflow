@@ -17,6 +17,7 @@ const TABS = [
   { key: "notifications", label: "Notifications",  icon: Bell },
   { key: "danger",        label: "Danger Zone",    icon: Shield },
 ];
+const FONT_SIZE_VALUES = { Small: "14px", Medium: "16px", Large: "18px" };
 
 export default function Settings() {
   const dispatch  = useDispatch();
@@ -43,10 +44,29 @@ export default function Settings() {
     memberJoined:   false,
     weeklyDigest:   false,
   });
+  const [savingNotifs, setSavingNotifs] = useState(false);
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem("fontSize") || "Medium");
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = FONT_SIZE_VALUES[fontSize];
+    localStorage.setItem("fontSize", fontSize);
+  }, [fontSize]);
 
   /* ── Sync user to profile form ── */
   useEffect(() => {
     if (user) setProfile({ name: user.name || "", email: user.email || "" });
+  }, [user]);
+
+  useEffect(() => {
+    const loadNotificationPreferences = async () => {
+      try {
+        const res = await API.get("/auth/notification-preferences");
+        setNotifs((current) => ({ ...current, ...res.data.preferences }));
+      } catch {
+        // Keep the default preferences when loading is unavailable.
+      }
+    };
+    if (user) loadNotificationPreferences();
   }, [user]);
 
   /* ─────────────── Handlers ─────────────── */
@@ -100,7 +120,7 @@ export default function Settings() {
     try {
       await API.delete("/auth/account");
       dispatch(logout());
-      navigate("/login");
+      navigate("/");
     } catch (err) {
       toast.error(err?.response?.data?.message || "Failed to delete account");
     }
@@ -280,21 +300,21 @@ export default function Settings() {
                   {[
                     { val: "light", label: "Light", icon: Sun },
                     { val: "dark",  label: "Dark",  icon: Moon },
-                  ].map(({ val, label, icon: Icon }) => (
+                  ].map((option) => (
                     <button
-                      key={val}
-                      onClick={() => { if (theme !== val) dispatch(toggleTheme()); }}
+                      key={option.val}
+                      onClick={() => { if (theme !== option.val) dispatch(toggleTheme()); }}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition ${
-                        theme === val
+                        theme === option.val
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-500/10"
                           : "border-gray-200 dark:border-zinc-700 hover:border-gray-300 dark:hover:border-zinc-600"
                       }`}
                     >
-                      <Icon className={`size-5 ${theme === val ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-zinc-400"}`} />
-                      <span className={`text-sm font-medium ${theme === val ? "text-blue-700 dark:text-blue-400" : "text-gray-700 dark:text-zinc-300"}`}>
-                        {label}
+                      <option.icon className={`size-5 ${theme === option.val ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-zinc-400"}`} />
+                      <span className={`text-sm font-medium ${theme === option.val ? "text-blue-700 dark:text-blue-400" : "text-gray-700 dark:text-zinc-300"}`}>
+                        {option.label}
                       </span>
-                      {theme === val && <Check className="size-4 text-blue-600 dark:text-blue-400 ml-auto" />}
+                      {theme === option.val && <Check className="size-4 text-blue-600 dark:text-blue-400 ml-auto" />}
                     </button>
                   ))}
                 </div>
@@ -307,8 +327,9 @@ export default function Settings() {
                   {["Small", "Medium", "Large"].map((size) => (
                     <button
                       key={size}
+                      onClick={() => setFontSize(size)}
                       className={`px-4 py-2 rounded-lg text-sm border transition ${
-                        size === "Medium"
+                        size === fontSize
                           ? "border-blue-500 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10"
                           : "border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:border-gray-300"
                       }`}
@@ -358,10 +379,22 @@ export default function Settings() {
               </div>
 
               <button
-                onClick={() => toast.success("Notification preferences saved!")}
+                onClick={async () => {
+                  setSavingNotifs(true);
+                  try {
+                    const res = await API.patch("/auth/notification-preferences", notifs);
+                    setNotifs((current) => ({ ...current, ...res.data.preferences }));
+                    toast.success("Notification preferences saved!");
+                  } catch (err) {
+                    toast.error(err?.response?.data?.message || "Failed to save notification preferences");
+                  } finally {
+                    setSavingNotifs(false);
+                  }
+                }}
+                disabled={savingNotifs}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition"
               >
-                <Save className="size-4" /> Save Preferences
+                <Save className="size-4" /> {savingNotifs ? "Saving..." : "Save Preferences"}
               </button>
             </div>
           )}

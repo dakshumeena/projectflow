@@ -4,6 +4,7 @@ const Comment = require("../models/Comment");
 const updateProjectProgress = require("../utils/updateProjectProgress");
 const createActivity = require("../utils/createActivity");
 const User = require("../models/User");
+const { getProjectAccess, canManageProject } = require("../utils/projectPermissions");
 
 const createTask = async (req, res) => {
   try {
@@ -12,6 +13,10 @@ const createTask = async (req, res) => {
     const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({ success: false, message: "Project not found" });
+    }
+    const access = await getProjectAccess(project, req.user.id);
+    if (!canManageProject(access)) {
+      return res.status(403).json({ success: false, message: "Only the project admin or lead can manage tasks" });
     }
 
     // Resolve assigneeId (could be a userId string)
@@ -96,6 +101,10 @@ const updateTask = async (req, res) => {
     }
 
     const project = await Project.findById(task.project);
+    const access = await getProjectAccess(project, req.user.id);
+    if (!canManageProject(access)) {
+      return res.status(403).json({ success: false, message: "Only the project admin or lead can manage tasks" });
+    }
 
     await createActivity({
       action: `Task "${task.title}" updated`,
@@ -122,6 +131,10 @@ const deleteTask = async (req, res) => {
 
     const project = await Project.findById(task.project);
     const projectId = task.project;
+    const access = await getProjectAccess(project, req.user.id);
+    if (!canManageProject(access)) {
+      return res.status(403).json({ success: false, message: "Only the project admin or lead can manage tasks" });
+    }
 
     await createActivity({
       action: `Task "${task.title}" deleted`,

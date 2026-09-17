@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useSelector } from "react-redux";
 import API from "../api/axios";
 import toast from "react-hot-toast";
 import { Bell, X, Check, Clock, ChevronRight, Inbox } from "lucide-react";
@@ -6,18 +7,33 @@ import { Bell, X, Check, Clock, ChevronRight, Inbox } from "lucide-react";
 // ── Slide-over panel ──────────────────────────────────────────────────────────
 const NotificationsPanel = ({ isOpen, onClose }) => {
   const [invitations, setInvitations] = useState([]);
+  const [joinRequests, setJoinRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(null);
   const panelRef = useRef(null);
+  const user = useSelector((state) => state.auth.user);
+  const userId = user?._id || user?.id;
+  const dismissedKey = userId ? `dismissedNotifications:${userId}` : null;
+
+  const getDismissedIds = () => {
+    if (!dismissedKey) return [];
+    return JSON.parse(localStorage.getItem(dismissedKey) || "[]");
+  };
 
   const fetchInvitations = async () => {
     setLoading(true);
     try {
       const res = await API.get("/workspaces/my-invitations");
-      setInvitations(res.data.invitations);
+      const nextInvitations = res.data.invitations || [];
+      const joinRequestsRes = await API.get("/workspaces/my-join-requests");
+      const nextJoinRequests = joinRequestsRes.data.requests || [];
+      const dismissedIds = getDismissedIds();
+      setInvitations(nextInvitations.filter((item) => !dismissedIds.includes(`invitation:${item._id}`)));
+      setJoinRequests(nextJoinRequests.filter((item) => !dismissedIds.includes(`join-request:${item._id}`)));
     } catch {
       // silently fail – backend route may not exist yet
       setInvitations([]);
+      setJoinRequests([]);
     } finally {
       setLoading(false);
     }
@@ -36,10 +52,21 @@ const NotificationsPanel = ({ isOpen, onClose }) => {
     return () => document.removeEventListener("mousedown", handler);
   }, [isOpen, onClose]);
 
+  const dismissNotification = (id) => {
+    const dismissedIds = [...new Set([...getDismissedIds(), id])];
+    if (dismissedKey) localStorage.setItem(dismissedKey, JSON.stringify(dismissedIds));
+    setInvitations((prev) => prev.filter((item) => `invitation:${item._id}` !== id));
+    setJoinRequests((prev) => prev.filter((item) => `join-request:${item._id}` !== id));
+  };
+
   const acceptInvitation = async (token) => {
     setAccepting(token);
     try {
-      await API.post(`/workspaces/invite/${token}/accept`);
+      const invitation = invitations.find((item) => item.token === token);
+      const acceptUrl = invitation?.type === "PROJECT"
+        ? `/invitations/${token}/accept`
+        : `/workspaces/invite/${token}/accept`;
+      await API.post(acceptUrl);
       toast.success("Workspace joined!");
       setInvitations((prev) => prev.filter((inv) => inv.token !== token));
     } catch (err) {
@@ -88,9 +115,9 @@ const NotificationsPanel = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Notifications</h2>
-              {!loading && invitations.length > 0 && (
+              {!loading && invitations.length + joinRequests.length > 0 && (
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {invitations.length} pending invitation{invitations.length !== 1 ? "s" : ""}
+                  {invitations.length + joinRequests.length} notification{invitations.length + joinRequests.length !== 1 ? "s" : ""}
                 </p>
               )}
             </div>
@@ -118,14 +145,14 @@ const NotificationsPanel = ({ isOpen, onClose }) => {
                 </div>
               ))}
             </div>
-          ) : invitations.length === 0 ? (
+          ) : invitations.length === 0 && joinRequests.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-6">
               <div className="p-4 rounded-full bg-zinc-100 dark:bg-zinc-800">
                 <Inbox className="size-7 text-zinc-400 dark:text-zinc-500" />
               </div>
               <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">All caught up</p>
               <p className="text-xs text-zinc-500 dark:text-zinc-500">
-                Workspace invitations will show up here
+                Workspace invitations and join-request updates will show up here
               </p>
             </div>
           ) : (
@@ -136,8 +163,12 @@ const NotificationsPanel = ({ isOpen, onClose }) => {
   invite={invite}
   onAccept={acceptInvitation}
   onDecline={declineInvitation}
+  onDismiss={() => dismissNotification(`invitation:${invite._id}`)}
   isAccepting={accepting === invite.token}
 />
+              ))}
+              {joinRequests.map((request) => (
+                <JoinRequestCard key={request._id} request={request} onDismiss={() => dismissNotification(`join-request:${request._id}`)} />
               ))}
             </div>
           )}
@@ -152,6 +183,7 @@ const InviteCard = ({
   invite,
   onAccept,
   onDecline,
+  onDismiss,
   isAccepting,
 }) => (
   <div className="group rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200 p-4">
@@ -170,9 +202,14 @@ const InviteCard = ({
           </p>
         </div>
       </div>
-      <span className="flex-shrink-0 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">
-        <Clock className="size-3" /> Pending
-      </span>
+      <div className="flex items-center gap-2">
+        <span className="flex-shrink-0 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">
+          <Clock className="size-3" /> Pending
+        </span>
+        <button type="button" onClick={onDismiss} aria-label="Clear notification" title="Clear notification" className="rounded p-1 text-zinc-400 transition hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200">
+          <X className="size-4" />
+        </button>
+      </div>
     </div>
 
     {/* CTA */}
@@ -223,20 +260,90 @@ const InviteCard = ({
   </div>
 );
 
+const JoinRequestCard = ({ request, onDismiss }) => {
+  const approved = request.status === "APPROVED" || request.status === "ACCEPTED";
+  return (
+    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+            {request.workspace?.name || "Workspace"}
+          </p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            {approved ? "Your request was approved. You can now access this workspace." : "Your workspace access request was rejected."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`flex-shrink-0 flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${approved ? "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20" : "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20"}`}>
+            {approved ? "Approved" : "Rejected"}
+          </span>
+          <button type="button" onClick={onDismiss} aria-label="Clear notification" title="Clear notification" className="rounded p-1 text-zinc-400 transition hover:bg-zinc-200 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200">
+            <X className="size-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── Bell trigger button (drop this into Navbar) ───────────────────────────────
 export const NotificationBell = ({ count = 0 }) => {
   const [open, setOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(count);
+  const [notificationIds, setNotificationIds] = useState([]);
+  const user = useSelector((state) => state.auth.user);
+  const userId = user?._id || user?.id;
+  const readKey = userId ? `readNotifications:${userId}` : null;
+
+  const fetchNotificationCount = async () => {
+    if (!userId || !readKey) {
+      setUnreadCount(0);
+      return;
+    }
+
+    try {
+      const [invitationResponse, requestResponse] = await Promise.all([
+        API.get("/workspaces/my-invitations"),
+        API.get("/workspaces/my-join-requests"),
+      ]);
+      const ids = [
+        ...(invitationResponse.data.invitations || []).map((item) => `invitation:${item._id}`),
+        ...(requestResponse.data.requests || []).map((item) => `join-request:${item._id}`),
+      ];
+      const seen = JSON.parse(localStorage.getItem(readKey) || "[]");
+      const dismissed = JSON.parse(localStorage.getItem(`dismissedNotifications:${userId}`) || "[]");
+      setNotificationIds(ids);
+      setUnreadCount(ids.filter((id) => !seen.includes(id) && !dismissed.includes(id)).length);
+    } catch {
+      setUnreadCount(0);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotificationCount();
+    const refresh = window.setInterval(fetchNotificationCount, 30000);
+    return () => window.clearInterval(refresh);
+  }, [userId]);
+
+  const openNotifications = () => {
+    if (readKey) {
+      const seen = JSON.parse(localStorage.getItem(readKey) || "[]");
+      localStorage.setItem(readKey, JSON.stringify([...new Set([...seen, ...notificationIds])]));
+    }
+    setUnreadCount(0);
+    setOpen(true);
+  };
 
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={openNotifications}
         className="relative size-8 flex items-center justify-center bg-white dark:bg-zinc-800 shadow rounded-lg transition hover:scale-105 active:scale-95"
       >
         <Bell className="size-4 text-gray-700 dark:text-gray-200" />
-        {count > 0 && (
+        {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 size-4 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-            {count > 9 ? "9+" : count}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>

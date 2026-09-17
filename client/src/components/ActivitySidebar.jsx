@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { Activity, X, ChevronRight, Clock, Folder, CheckSquare, Building2 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { getWorkspaceActivities } from "../api/activityApi";
-import { useNavigate } from "react-router-dom";
 
 const entityIcon = (type) => {
   switch (type) {

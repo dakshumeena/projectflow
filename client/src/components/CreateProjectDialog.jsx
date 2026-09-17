@@ -47,8 +47,8 @@ const CreateProjectDialog = ({ isDialogOpen, setIsDialogOpen }) => {
     }
   };
 
-  const removeTeamMember = (email) => {
-    setFormData((prev) => ({ ...prev, team_members: prev.team_members.filter((m) => m !== email) }));
+  const removeTeamMember = (userId) => {
+    setFormData((prev) => ({ ...prev, team_members: prev.team_members.filter((memberId) => memberId !== userId) }));
   };
 
   if (!isDialogOpen) return null;
@@ -165,7 +165,7 @@ const CreateProjectDialog = ({ isDialogOpen, setIsDialogOpen }) => {
             >
               <option value="">No lead</option>
               {currentWorkspace?.members?.map((member) => (
-                <option key={member.user?.email || member.user?._id} value={member.user?.email}>
+                <option key={member.user?._id} value={member.user?._id}>
                   {member.user?.name} ({member.user?.email})
                 </option>
               ))}
@@ -187,9 +187,9 @@ const CreateProjectDialog = ({ isDialogOpen, setIsDialogOpen }) => {
             >
               <option value="">Add team members</option>
               {currentWorkspace?.members
-                ?.filter((m) => !formData.team_members.includes(m.user?.email))
+                ?.filter((m) => !formData.team_members.includes(m.user?._id))
                 .map((member) => (
-                  <option key={member.user?.email} value={member.user?.email}>
+                  <option key={member.user?._id} value={member.user?._id}>
                     {member.user?.name} ({member.user?.email})
                   </option>
                 ))}
@@ -197,17 +197,20 @@ const CreateProjectDialog = ({ isDialogOpen, setIsDialogOpen }) => {
 
             {formData.team_members.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
-                {formData.team_members.map((email) => (
+                {formData.team_members.map((userId) => {
+                  const member = currentWorkspace.members.find((item) => item.user?._id === userId);
+                  return (
                   <div
-                    key={email}
+                    key={userId}
                     className="flex items-center gap-1 bg-blue-200/50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 px-2 py-1 rounded-md text-sm"
                   >
-                    {email}
-                    <button type="button" onClick={() => removeTeamMember(email)} className="ml-1">
+                    {member?.user?.name || member?.user?.email || userId}
+                    <button type="button" onClick={() => removeTeamMember(userId)} className="ml-1">
                       <XIcon className="w-3 h-3" />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

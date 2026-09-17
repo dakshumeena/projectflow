@@ -70,7 +70,7 @@ const TaskDetails = () => {
 
   useEffect(() => {
     fetchTaskDetails();
-  }, [taskId, currentWorkspace]);
+  }, [taskId, projectId]);
 
   useEffect(() => {
     if (taskId) {
