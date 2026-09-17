@@ -16,6 +16,10 @@ function WorkspaceDropdown() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useSelector(state => state.auth);
+  const getMemberCount = (workspace) => {
+    const memberCount = workspace?.members?.length || 0;
+    return memberCount || (workspace?.owner ? 1 : 0);
+  };
 
   const onSelectWorkspace = (workspaceId) => {
     dispatch(setCurrentWorkspace(workspaceId));
@@ -80,7 +84,7 @@ function WorkspaceDropdown() {
                     {ws.name}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">
-                    {ws.members?.length || 0} member{ws.members?.length !== 1 ? "s" : ""}
+                    {getMemberCount(ws)} member{getMemberCount(ws) !== 1 ? "s" : ""}
                   </p>
                 </div>
                 {currentWorkspace?._id === ws._id && (

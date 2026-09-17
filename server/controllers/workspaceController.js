@@ -351,10 +351,14 @@ const getWorkspaces = async (req, res) => {
         );
 
         const wsObj = ws.toObject();
-        wsObj.members = wsObj.members.map((m) => ({
+        const workspaceMembers = wsObj.members.map((m) => ({
           user: m,
           role: m._id.toString() === wsObj.owner._id.toString() ? "ADMIN" : "MEMBER",
         }));
+        if (wsObj.owner && !workspaceMembers.some((member) => member.user._id.toString() === wsObj.owner._id.toString())) {
+          workspaceMembers.unshift({ user: wsObj.owner, role: "ADMIN" });
+        }
+        wsObj.members = workspaceMembers;
         wsObj.projects = projectsWithTasks;
         return wsObj;
       })
